@@ -1,13 +1,114 @@
 html {
-  font-size: 14px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 28px;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+body {
+    background: #00000010;
+    margin: 10px;
 }
 
-.container {
-
+input {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1rem;
 }
+
+button {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1rem;
+}
+
+.main-container {
+    max-width: 700px;
+    margin: 0 auto;
+    border: 1px solid #0000003f;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 32px 14px 72px 14px;
+}
+
+.main-logo {
+    text-align: center;
+}
+
+.main-title {
+    font-size: 42px;
+    font-weight: 700;
+    text-align: center;
+    margin: 30px 0 80px 0;
+}
+
+.main-form {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    margin: 36px 0 0 0;
+}
+
+    .form-field > span {
+        font-size: 16px;
+        color: #000000a0;
+        position: absolute;
+        left: 14px;
+        top: -18px;
+    }
+
+    .form-field > input {
+        height: 54px;
+        border: 0;
+        border-radius: 10px;
+        background: #00000010;
+        padding: 0 14px;
+    }
+
+        .form-field > input:focus {
+            outline: none;
+        }
+
+.form-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 20px 0;
+    margin: 72px 0 0 0;
+}
+
+    .form-buttons > button {
+        height: 64px;
+        border: 0;
+        border-radius: 10px;
+        background: #459eda;
+        color: #ffffff;
+        font-size: 38px;
+        padding: 0 14px;
+    }
+
+        .form-buttons > button:hover {
+            cursor: pointer;
+            background: #2b91d5;
+        }
+
+        .form-buttons > button:active {
+            cursor: pointer;
+            background: #007acc;
+        }
+
+        .form-buttons > button.secondary {
+            border: 2px solid #459eda;
+            background: #ffffff;
+            color: #459eda;
+        }
+
+            .form-buttons > button.secondary:hover {
+                cursor: pointer;
+                background: #00000010;
+            }
+
+            .form-buttons > button.secondary:active {
+                cursor: pointer;
+                background: #0000001f;
+            }

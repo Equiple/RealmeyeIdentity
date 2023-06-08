@@ -8,7 +8,14 @@
     <link rel="stylesheet" href="~/RealmeyeIdentity.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <div class="container">
+    <div class="main-container">
+        <div class="main-logo">
+            <img src="~/img/eye-big.png" />
+        </div>
+        <div class="main-title">
+            We are challenging you!
+        </div>
+        @RenderBody()
     </div>
     <script src="~/js/main.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
