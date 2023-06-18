@@ -1,3 +1,5 @@
+using RealmeyeIdentity.Authentication;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -6,6 +8,20 @@ builder.Services.AddRouting(options =>
     options.LowercaseUrls = true;
 });
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddSession();
+builder.Services.AddDistributedMemoryCache();
+
+builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
+builder.Services.AddSingleton<IPasswordService, PasswordService>();
+builder.Services.AddSingleton<ICodeGenerator, CodeGenerator>();
+
+builder.Services.Configure<UserDatabaseOptions>(
+    builder.Configuration.GetSection("UserDatabase"));
+builder.Services.Configure<IdTokenOptions>(
+    builder.Configuration.GetSection("IdToken"));
+
+UserBsonMap.Register();
 
 var app = builder.Build();
 
@@ -20,14 +36,13 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-app.UseRouting();
+app.UseSession();
 
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseRouting();
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{action=Index}/{id?}",
+    pattern: "{action=Login}",
     defaults: new
     {
         controller = "Authentication",

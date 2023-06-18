@@ -1,0 +1,22 @@
+﻿@model LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<form asp-action="Login" asp-route-redirectUri="@ViewData["RedirectUri"]" class="main-form">
+    <div class="form-field">
+        <input asp-for="Name" type="text" placeholder="In-game name" />
+        <span asp-validation-for="Name"></span>
+    </div>
+    <div class="form-field">
+        <input asp-for="Password" type="password" placeholder="Password" />
+        <span asp-validation-for="Password"></span>
+    </div>
+    <div class="form-buttons">
+        <button type="submit" class="btn">Login</button>
+        <a asp-action="Register"
+            asp-route-redirectUri="@ViewData["RedirectUri"]"
+            class="btn secondary"
+        >Register</a>
+    </div>
+</form>
