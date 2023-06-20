@@ -15,10 +15,12 @@ builder.Services.AddSingleton<ICodeGenerator, CodeGenerator>();
 
 builder.Services.AddDistributedMemoryCache();
 
-builder.Services.Configure<UserDatabaseOptions>(
-    builder.Configuration.GetSection("UserDatabase"));
-builder.Services.Configure<IdTokenOptions>(
-    builder.Configuration.GetSection("IdToken"));
+ConfigurationManager config = builder.Configuration;
+builder.Services.Configure<UserDatabaseOptions>(config.GetSection("UserDatabase"));
+builder.Services.Configure<PasswordOptions>(config.GetSection("Password"));
+builder.Services.Configure<RegistrationSessionOptions>(config.GetSection("RegistrationSession"));
+builder.Services.Configure<CodeGeneratorOptions>(config.GetSection("CodeGenerator"));
+builder.Services.Configure<IdTokenOptions>(config.GetSection("IdToken"));
 
 UserBsonMap.Register();
 
