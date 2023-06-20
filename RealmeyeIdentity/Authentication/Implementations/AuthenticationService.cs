@@ -12,6 +12,7 @@ namespace RealmeyeIdentity.Authentication
         private readonly IMongoCollection<User> _userCollection;
         private readonly IPasswordService _passwordService;
         private readonly ICodeGenerator _codeGenerator;
+        private readonly IRealmeyeService _realmeyeService;
         private readonly IdTokenOptions _idTokenOptions;
 
         private readonly IDistributedCache _cache;
@@ -19,6 +20,7 @@ namespace RealmeyeIdentity.Authentication
         public AuthenticationService(
             IPasswordService passwordService,
             ICodeGenerator codeGenerator,
+            IRealmeyeService realmeyeService,
             IOptions<UserDatabaseOptions> dbOptions,
             IOptions<IdTokenOptions> idTokenOptions,
             IDistributedCache cache)
@@ -28,6 +30,7 @@ namespace RealmeyeIdentity.Authentication
             _userCollection = db.GetCollection<User>(dbOptions.Value.UserCollectionName);
             _passwordService = passwordService;
             _codeGenerator = codeGenerator;
+            _realmeyeService = realmeyeService;
             _idTokenOptions = idTokenOptions.Value;
             _cache = cache;
         }
@@ -52,13 +55,25 @@ namespace RealmeyeIdentity.Authentication
             return idToken;
         }
 
+        public async Task<RegistrationSession?> GetRegistrationSession(string sessionId)
+        {
+            byte[] serializedSession = await _cache.GetAsync(sessionId);
+            if (serializedSession == null)
+            {
+                return null;
+            }
+            RegistrationSession session = RegistrationSession.Deserialize(serializedSession);
+            return session;
+        }
+
         public async Task<RegistrationSession> StartRegistration()
         {
             string sessionId = Convert.ToBase64String(RandomNumberGenerator.GetBytes(128));
             string code = _codeGenerator.GenerateCode();
             DateTimeOffset expiresAt = DateTimeOffset.UtcNow.AddMinutes(15).AddSeconds(1);
             RegistrationSession session = new(sessionId, code, expiresAt);
-            await _cache.SetStringAsync(sessionId, code, new DistributedCacheEntryOptions
+            byte[] serializedSession = session.Serialize();
+            await _cache.SetAsync(sessionId, serializedSession, new DistributedCacheEntryOptions
             {
                 AbsoluteExpiration = expiresAt,
             });

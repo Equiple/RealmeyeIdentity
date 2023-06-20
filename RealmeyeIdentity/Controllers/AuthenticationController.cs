@@ -20,9 +20,7 @@ namespace RealmeyeIdentity.Controllers
 
         [HttpGet]
         [RedirectUriFilter]
-        public IActionResult Login(
-            string redirectUri,
-            bool changePasswordSuccess = false)
+        public IActionResult Login(string redirectUri)
         {
             if (string.IsNullOrEmpty(redirectUri))
             {
@@ -62,8 +60,16 @@ namespace RealmeyeIdentity.Controllers
         [HttpGet]
         public async Task<IActionResult> Register(string redirectUri, bool restore = false)
         {
-            RegistrationSession session = await _service.StartRegistration();
-            SetRegistrationSessionId(session);
+            RegistrationSession? session = null;
+            if (TryGetRegistrationSessionId(out string sessionId))
+            {
+                session = await _service.GetRegistrationSession(sessionId);
+            }
+            if (session == null)
+            {
+                session = await _service.StartRegistration();
+                SetRegistrationSessionId(session);
+            }
             RegisterModel model = new()
             {
                 Code = session.Code,
@@ -86,6 +92,7 @@ namespace RealmeyeIdentity.Controllers
 
             if (!TryGetRegistrationSessionId(out string sessionId))
             {
+                model.SessionExpired = true;
                 return View(model);
             }
 
