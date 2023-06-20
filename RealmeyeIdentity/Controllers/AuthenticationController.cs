@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using RealmeyeIdentity.Authentication;
+using RealmeyeIdentity.Filters;
 using RealmeyeIdentity.Models;
 
 namespace RealmeyeIdentity.Controllers
@@ -8,7 +9,7 @@ namespace RealmeyeIdentity.Controllers
     public class AuthenticationController : Controller
     {
         private const string IdTokenQueryParam = "idToken";
-        private const string CodeSessionKey = "code";
+        private const string SessionCookieName = "registration_session";
 
         private readonly IAuthenticationService _service;
 
@@ -18,8 +19,15 @@ namespace RealmeyeIdentity.Controllers
         }
 
         [HttpGet]
-        public IActionResult Login(string redirectUri)
+        [RedirectUriFilter]
+        public IActionResult Login(
+            string redirectUri,
+            bool changePasswordSuccess = false)
         {
+            if (string.IsNullOrEmpty(redirectUri))
+            {
+                return View("Error", new ErrorModel { Message = "redirect uri null" });
+            }
             ViewData["RedirectUri"] = redirectUri;
             return View();
         }
@@ -43,6 +51,7 @@ namespace RealmeyeIdentity.Controllers
                     return Redirect(uri);
 
                 case LoginResult.Error error:
+                    ModelUtils.AddLoginError(ModelState, error);
                     return View(model);
 
                 default:
@@ -51,19 +60,14 @@ namespace RealmeyeIdentity.Controllers
         }
 
         [HttpGet]
-        public IActionResult Register(
-            string redirectUri,
-            [FromServices] ICodeGenerator codeGenerator)
+        public async Task<IActionResult> Register(string redirectUri, bool restore = false)
         {
-            if (!TryGetSessionCode(out byte[] codeBytes))
-            {
-                codeBytes = codeGenerator.GenerateCode();
-                SetSessionCode(codeBytes);
-            }
-            string code = GetCodeString(codeBytes);
+            RegistrationSession session = await _service.StartRegistration();
+            SetRegistrationSessionId(session);
             RegisterModel model = new()
             {
-                Code = code,
+                Code = session.Code,
+                Restore = restore,
             };
             ViewData["RedirectUri"] = redirectUri;
             return View(model);
@@ -72,20 +76,24 @@ namespace RealmeyeIdentity.Controllers
         [HttpPost]
         public async Task<IActionResult> Register(
             [FromForm] RegisterModel model,
-            [FromQuery] string redirectUri)
+            [FromQuery] string redirectUri,
+            [FromQuery] bool restore)
         {
             if (!ModelState.IsValid)
             {
                 return View(model);
             }
 
-            if (!TryGetSessionCode(out byte[] codeBytes))
+            if (!TryGetRegistrationSessionId(out string sessionId))
             {
-                return View();
+                return View(model);
             }
 
-            string code = GetCodeString(codeBytes);
-            RegisterResult result = await _service.Register(model.Name, model.Password, code);
+            RegisterResult result = await _service.Register(
+                sessionId,
+                model.Name,
+                model.Password,
+                restore);
 
             switch (result)
             {
@@ -94,6 +102,7 @@ namespace RealmeyeIdentity.Controllers
                     return Redirect(uri);
 
                 case RegisterResult.Error error:
+                    ModelUtils.AddRegisterError(ModelState, model, error);
                     return View(model);
 
                 default:
@@ -101,26 +110,62 @@ namespace RealmeyeIdentity.Controllers
             }
         }
 
-        private bool TryGetSessionCode(out byte[] code)
+        [HttpGet]
+        public IActionResult ChangePassword(string redirectUri)
         {
-            if (!HttpContext.Session.TryGetValue(CodeSessionKey, out byte[]? sessionCode)
-                || sessionCode == null)
+            ViewData["RedirectUri"] = redirectUri;
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ChangePassword(
+            [FromForm] ChangePasswordModel model,
+            [FromQuery] string redirectUri)
+        {
+            if (!ModelState.IsValid)
             {
-                code = Array.Empty<byte>();
+                return View(model);
+            }
+
+            ChangePasswordResult result = await _service.ChangePassword(
+                model.Name,
+                model.OldPassword,
+                model.NewPassword);
+
+            switch (result)
+            {
+                case ChangePasswordResult.Ok ok:
+                    return RedirectToAction(nameof(Login));
+
+                case ChangePasswordResult.Error error:
+                    ModelUtils.AddChangePasswordError(ModelState, error);
+                    return View(model);
+
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
+        private bool TryGetRegistrationSessionId(out string sessionId)
+        {
+            sessionId = "";
+            if (!Request.Cookies.TryGetValue(SessionCookieName, out string? cookieSessionId)
+                || cookieSessionId == null)
+            {
                 return false;
             }
-            code = sessionCode;
+            sessionId = cookieSessionId;
             return true;
         }
 
-        private void SetSessionCode(byte[] code)
+        private void SetRegistrationSessionId(RegistrationSession session)
         {
-            HttpContext.Session.Set(CodeSessionKey, code);
-        }
-
-        private static string GetCodeString(byte[] codeBytes)
-        {
-            return Convert.ToBase64String(codeBytes);
+            Response.Cookies.Append(SessionCookieName, session.Id, new()
+            {
+                HttpOnly = true,
+                IsEssential = true,
+                Expires = session.ExpiresAt,
+            });
         }
     }
 }

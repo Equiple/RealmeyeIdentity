@@ -10,6 +10,12 @@ namespace RealmeyeIdentity.Models
         [Required]
         public string Password { get; set; }
 
-        public string Code { get; set; }
+        public string? Code { get; set; }
+
+        public bool Restore { get; set; }
+
+        public bool SessionExpired { get; set; }
+
+        public bool AlreadyExists { get; set; }
     }
 }

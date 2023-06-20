@@ -9,12 +9,11 @@ builder.Services.AddRouting(options =>
 });
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddSession();
-builder.Services.AddDistributedMemoryCache();
-
 builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
 builder.Services.AddSingleton<IPasswordService, PasswordService>();
 builder.Services.AddSingleton<ICodeGenerator, CodeGenerator>();
+
+builder.Services.AddDistributedMemoryCache();
 
 builder.Services.Configure<UserDatabaseOptions>(
     builder.Configuration.GetSection("UserDatabase"));
@@ -35,8 +34,6 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
-app.UseSession();
 
 app.UseRouting();
 

@@ -1,6 +1,6 @@
 ﻿namespace RealmeyeIdentity.Authentication
 {
-    public enum LoginErrorType
+    public enum ChangePasswordErrorType
     {
         NotFound = 0,
         IncorrectPassword = 1,

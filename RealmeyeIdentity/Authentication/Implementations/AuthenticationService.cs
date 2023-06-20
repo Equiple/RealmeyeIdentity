@@ -1,7 +1,9 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
 
 namespace RealmeyeIdentity.Authentication
 {
@@ -9,18 +11,25 @@ namespace RealmeyeIdentity.Authentication
     {
         private readonly IMongoCollection<User> _userCollection;
         private readonly IPasswordService _passwordService;
+        private readonly ICodeGenerator _codeGenerator;
         private readonly IdTokenOptions _idTokenOptions;
 
+        private readonly IDistributedCache _cache;
+
         public AuthenticationService(
+            IPasswordService passwordService,
+            ICodeGenerator codeGenerator,
             IOptions<UserDatabaseOptions> dbOptions,
             IOptions<IdTokenOptions> idTokenOptions,
-            IPasswordService passwordService)
+            IDistributedCache cache)
         {
             MongoClient client = new(dbOptions.Value.ConnectionString);
             IMongoDatabase db = client.GetDatabase(dbOptions.Value.Database);
             _userCollection = db.GetCollection<User>(dbOptions.Value.UserCollectionName);
             _passwordService = passwordService;
+            _codeGenerator = codeGenerator;
             _idTokenOptions = idTokenOptions.Value;
+            _cache = cache;
         }
 
         public async Task<LoginResult> Login(string name, string password)
@@ -36,14 +45,39 @@ namespace RealmeyeIdentity.Authentication
             string hash = _passwordService.GetHash(password, user.Salt);
             if (user.Password != hash)
             {
-                return LoginErrorType.InvalidPassword;
+                return LoginErrorType.IncorrectPassword;
             }
 
             string idToken = GetIdToken(user);
             return idToken;
         }
 
-        public async Task<RegisterResult> Register(string name, string password, string code)
+        public async Task<RegistrationSession> StartRegistration()
+        {
+            string sessionId = Convert.ToBase64String(RandomNumberGenerator.GetBytes(128));
+            string code = _codeGenerator.GenerateCode();
+            DateTimeOffset expiresAt = DateTimeOffset.UtcNow.AddMinutes(15).AddSeconds(1);
+            RegistrationSession session = new(sessionId, code, expiresAt);
+            await _cache.SetStringAsync(sessionId, code, new DistributedCacheEntryOptions
+            {
+                AbsoluteExpiration = expiresAt,
+            });
+            return session;
+        }
+
+        public async Task<RegisterResult> Register(
+            string sessionId,
+            string name,
+            string password,
+            bool restore)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ChangePasswordResult> ChangePassword(
+            string name,
+            string oldPassword,
+            string newPassword)
         {
             throw new NotImplementedException();
         }

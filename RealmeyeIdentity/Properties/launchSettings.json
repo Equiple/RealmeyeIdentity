@@ -3,6 +3,7 @@
     "RealmeyeIdentity": {
       "commandName": "Project",
       "launchBrowser": true,
+      "launchUrl": "?redirectUri=test",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       },

@@ -1,4 +1,5 @@
 ﻿@model LoginModel
+
 @{
     ViewData["Title"] = "Login";
 }
@@ -15,8 +16,11 @@
     <div class="form-buttons">
         <button type="submit" class="btn">Login</button>
         <a asp-action="Register"
-            asp-route-redirectUri="@ViewData["RedirectUri"]"
-            class="btn secondary"
-        >Register</a>
+            asp-route-redirectUri="@ViewData["RedirectUri"]">Register</a>
+        <a asp-action="Register"
+           asp-route-redirectUri="@ViewData["RedirectUri"]"
+           asp-route-restore="true">Restore password</a>
+        <a asp-action="ChangePassword"
+           asp-route-redirectUri="@ViewData["RedirectUri"]">Change password</a>
     </div>
 </form>

@@ -2,6 +2,6 @@
 {
     public interface ICodeGenerator
     {
-        public byte[] GenerateCode();
+        public string GenerateCode();
     }
 }

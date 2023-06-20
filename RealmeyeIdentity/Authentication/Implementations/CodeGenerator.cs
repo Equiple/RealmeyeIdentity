@@ -1,10 +1,14 @@
-﻿namespace RealmeyeIdentity.Authentication
+﻿using System.Security.Cryptography;
+
+namespace RealmeyeIdentity.Authentication
 {
     public class CodeGenerator : ICodeGenerator
     {
-        public byte[] GenerateCode()
+        public string GenerateCode()
         {
-            throw new NotImplementedException();
+            byte[] codeBytes = RandomNumberGenerator.GetBytes(32);
+            string code = $"RID_{Convert.ToBase64String(codeBytes)}";
+            return code;
         }
     }
 }

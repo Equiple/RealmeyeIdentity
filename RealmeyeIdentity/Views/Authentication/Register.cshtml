@@ -1,12 +1,39 @@
 ﻿@model RegisterModel
+
 @{
     ViewData["Title"] = "Register";
+    Dictionary<string, string> registerParams = new()
+    {
+        { "redirectUri", ViewData["RedirectUri"]?.ToString() ?? "" },
+    };
+    if (Model.Restore)
+    {
+        registerParams.Add("restore", "true");
+    }
 }
 
-<form asp-action="Register" asp-route-redirectUri="@ViewData["RedirectUri"]" class="main-form">
+<form asp-action="Register" asp-all-route-data="registerParams" class="main-form">
+    @if (Model.SessionExpired) {
+        <span>Session expired, restart page to get new code</span>
+    }
+    @if (Model.Code != null)
+    {
+        <div class="form-field">
+            <input asp-for="Code" type="text" readonly />
+            <span asp-validation-for="Code"></span>
+        </div>
+    }
     <div class="form-field">
         <input asp-for="Name" type="text" placeholder="In-game name" />
         <span asp-validation-for="Name"></span>
+        @if (Model.AlreadyExists) {
+            <span>
+                Name already registered,&nbsp;
+                <a asp-action="Login"
+                    asp-route-redirectUri="@ViewData["RedirectUri"]">login</a>
+                &nbsp;to use this name
+            </span>
+        }
     </div>
     <div class="form-field">
         <input asp-for="Password" type="password" placeholder="Password" />
@@ -14,5 +41,7 @@
     </div>
     <div class="form-buttons">
         <button type="submit" class="btn">Register</button>
+        <a asp-action="Login"
+           asp-route-redirectUri="@ViewData["RedirectUri"]">Back to login</a>
     </div>
 </form>

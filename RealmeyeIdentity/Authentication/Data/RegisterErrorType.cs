@@ -2,7 +2,9 @@
 {
     public enum RegisterErrorType
     {
-        AlreadyExists,
-        InvalidCode,
+        IncorrectCode = 0,
+        SessionExpired = 1,
+        AlreadyExists = 2,
+        RestoreNotFound = 3,
     }
 }
