@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace RealmeyeIdentity.Authentication
 {
@@ -53,8 +54,11 @@ namespace RealmeyeIdentity.Authentication
                 return LoginErrorType.NotFound;
             }
 
-            string hash = _passwordService.GetHash(password, user.Salt);
-            if (user.Password != hash)
+            byte[] hash = _passwordService.GetHash(
+                Encoding.UTF8.GetBytes(password),
+                Convert.FromBase64String(user.Salt));
+            string hashb64 = Convert.ToBase64String(hash);
+            if (user.Password != hashb64)
             {
                 return LoginErrorType.IncorrectPassword;
             }
@@ -124,12 +128,13 @@ namespace RealmeyeIdentity.Authentication
 
             if (user == null) // restore == false
             {
-                string salt = _passwordService.GenerateSalt();
+                byte[] salt = _passwordService.GenerateSalt();
+                byte[] hash = _passwordService.GetHash(Encoding.UTF8.GetBytes(password), salt);
                 user = new()
                 {
                     Name = name,
-                    Password = _passwordService.GetHash(password, salt),
-                    Salt = salt,
+                    Password = Convert.ToBase64String(hash),
+                    Salt = Convert.ToBase64String(salt),
                 };
                 await _userCollection.InsertOneAsync(user);
             }
@@ -151,15 +156,19 @@ namespace RealmeyeIdentity.Authentication
                 return ChangePasswordErrorType.NotFound;
             }
 
-            string hash = _passwordService.GetHash(oldPassword, user.Salt);
-            if (user.Password != hash)
+            byte[] oldHash = _passwordService.GetHash(
+                Encoding.UTF8.GetBytes(oldPassword),
+                Convert.FromBase64String(user.Salt));
+            string hashb64 = Convert.ToBase64String(oldHash);
+            if (user.Password != hashb64)
             {
                 return ChangePasswordErrorType.IncorrectPassword;
             }
 
-            string salt = _passwordService.GenerateSalt();
-            user.Password = _passwordService.GetHash(newPassword, salt);
-            user.Salt = salt;
+            byte[] salt = _passwordService.GenerateSalt();
+            byte[] newHash = _passwordService.GetHash(Encoding.UTF8.GetBytes(newPassword), salt);
+            user.Password = Convert.ToBase64String(newHash);
+            user.Salt = Convert.ToBase64String(salt);
             await _userCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
 
             return new ChangePasswordResult.Ok();

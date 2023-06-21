@@ -2,8 +2,8 @@
 {
     public interface IPasswordService
     {
-        string GetHash(string password, string salt);
+        byte[] GenerateSalt();
 
-        string GenerateSalt();
+        byte[] GetHash(byte[] password, byte[] salt);
     }
 }
