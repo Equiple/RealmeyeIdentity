@@ -12,6 +12,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
 builder.Services.AddSingleton<IPasswordService, PasswordService>();
 builder.Services.AddSingleton<ICodeGenerator, CodeGenerator>();
+builder.Services.AddSingleton<IRealmeyeService, RealmeyeService>();
 
 builder.Services.AddDistributedMemoryCache();
 
