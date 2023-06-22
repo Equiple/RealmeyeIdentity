@@ -19,18 +19,14 @@ namespace RealmeyeIdentity.Controllers
         }
 
         [HttpGet]
-        [RedirectUriFilter]
-        public IActionResult Login(string redirectUri)
+        [WithRedirectUri]
+        public IActionResult Login()
         {
-            if (string.IsNullOrEmpty(redirectUri))
-            {
-                return View("Error", new ErrorModel { Message = "redirect uri null" });
-            }
-            ViewData["RedirectUri"] = redirectUri;
             return View();
         }
 
         [HttpPost]
+        [WithRedirectUri]
         public async Task<IActionResult> Login(
             [FromForm] LoginModel model,
             [FromQuery] string redirectUri)
@@ -58,7 +54,8 @@ namespace RealmeyeIdentity.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Register(string redirectUri, bool restore = false)
+        [WithRedirectUri]
+        public async Task<IActionResult> Register(bool restore = false)
         {
             RegistrationSession? session = null;
             if (TryGetRegistrationSessionId(out string sessionId))
@@ -75,11 +72,11 @@ namespace RealmeyeIdentity.Controllers
                 Code = session.Code,
                 Restore = restore,
             };
-            ViewData["RedirectUri"] = redirectUri;
             return View(model);
         }
 
         [HttpPost]
+        [WithRedirectUri]
         public async Task<IActionResult> Register(
             [FromForm] RegisterModel model,
             [FromQuery] string redirectUri,
@@ -118,13 +115,14 @@ namespace RealmeyeIdentity.Controllers
         }
 
         [HttpGet]
-        public IActionResult ChangePassword(string redirectUri)
+        [WithRedirectUri]
+        public IActionResult ChangePassword()
         {
-            ViewData["RedirectUri"] = redirectUri;
             return View();
         }
 
         [HttpPost]
+        [WithRedirectUri]
         public async Task<IActionResult> ChangePassword(
             [FromForm] ChangePasswordModel model,
             [FromQuery] string redirectUri)
