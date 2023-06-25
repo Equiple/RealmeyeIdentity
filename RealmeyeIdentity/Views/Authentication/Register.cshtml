@@ -1,7 +1,9 @@
-﻿@model RegisterModel
+﻿@using Microsoft.AspNetCore.WebUtilities
+@model RegisterModel
 
 @{
     ViewData["Title"] = "Register";
+
     Dictionary<string, string> registerParams = new()
     {
         { "redirectUri", ViewData["RedirectUri"]?.ToString() ?? "" },
@@ -10,38 +12,80 @@
     {
         registerParams.Add("restore", "true");
     }
+
+    string startRegisterUri = QueryHelpers.AddQueryString("/register", registerParams);
 }
 
 <form asp-action="Register" asp-all-route-data="registerParams" class="main-form">
-    @if (Model.SessionExpired) {
-        <span>Session expired, restart page to get new code</span>
-    }
-    @if (Model.Code != null)
-    {
-        <div class="form-field">
-            <input asp-for="Code" type="text" readonly />
-            <span asp-validation-for="Code"></span>
-        </div>
-    }
+    <div>
+        Paste the given code anywhere in your <a href="https://www.realmeye.com"
+            target="_blank">RealmEye</a> profile description before submitting
+    </div>
     <div class="form-field">
-        <input asp-for="Name" type="text" placeholder="In-game name" />
+        <label>Code, expires in <span id="code-timer"></span></label>
+        <input asp-for="Code" type="text" readonly />
+        <span asp-validation-for="Code"></span>
+    </div>
+    <div class="form-field">
+        <label>RotMG name</label>
+        <input asp-for="Name" type="text" />
         <span asp-validation-for="Name"></span>
         @if (Model.AlreadyExists) {
-            <span>
-                Name already registered,&nbsp;
-                <a asp-action="Login"
-                    asp-route-redirectUri="@ViewData["RedirectUri"]">login</a>
-                &nbsp;to use this name
-            </span>
+            <span>Name is already taken, you can login <a asp-action="Login"
+                asp-route-redirectUri="@ViewData["RedirectUri"]">here</a></span>
         }
     </div>
     <div class="form-field">
-        <input asp-for="Password" type="password" placeholder="Password" />
+        <label>Password</label>
+        <input asp-for="Password" type="password" placeholder="Numbers and letters, at least 8 characters long" />
         <span asp-validation-for="Password"></span>
+        @if (Model.PasswordErrors.Count > 0)
+        {
+            <span class="static">
+                @for (int i = 0; i < Model.PasswordErrors.Count; i++)
+                {
+                    @if (i > 0)
+                    {
+                        <br />
+                    }
+                    @Model.PasswordErrors[i]
+                }
+            </span>
+        }
     </div>
     <div class="form-buttons">
         <button type="submit" class="btn">Register</button>
+
         <a asp-action="Login"
-           asp-route-redirectUri="@ViewData["RedirectUri"]">Back to login</a>
+           asp-route-redirectUri="@ViewData["RedirectUri"]">Already registered</a>
     </div>
 </form>
+
+@section Scripts
+{
+    <script type="text/javascript">
+        function setTime(timer, seconds) {
+            const secs = seconds % 60;
+            const mins = (seconds - secs) / 60;
+            timer.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function startRegistrationOver() {
+            const nameInput = document.getElementById('Name');
+            location.assign(`@startRegisterUri&name=${nameInput.value}`);
+        }
+
+        const timer = document.getElementById('code-timer');
+        let seconds = @Model.CodeExpiresInSeconds;
+        setTime(timer, seconds);
+        const timerInterval = setInterval(() => {
+            if (seconds === 0) {
+                clearInterval(timerInterval);
+                startRegistrationOver();
+                return;
+            }
+            seconds--;
+            setTime(timer, seconds);
+        }, 1000);
+    </script>
+}

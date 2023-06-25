@@ -9,7 +9,7 @@ namespace RealmeyeIdentity.Controllers
     public class AuthenticationController : Controller
     {
         private const string IdTokenQueryParam = "idToken";
-        private const string SessionCookieName = "registration_session";
+        private const string RegistrationCookieName = "registration_session";
 
         private readonly IAuthenticationService _service;
 
@@ -20,9 +20,10 @@ namespace RealmeyeIdentity.Controllers
 
         [HttpGet]
         [WithRedirectUri]
-        public IActionResult Login()
+        public IActionResult Login(string? name = null)
         {
-            return View();
+            LoginModel model = new() { Name = name };
+            return View(model);
         }
 
         [HttpPost]
@@ -31,7 +32,7 @@ namespace RealmeyeIdentity.Controllers
             [FromForm] LoginModel model,
             [FromQuery] string redirectUri)
         {
-            if (!ModelState.IsValid)
+            if (!ModelState.IsValid || model.Name == null || model.Password == null)
             {
                 return View(model);
             }
@@ -55,7 +56,7 @@ namespace RealmeyeIdentity.Controllers
 
         [HttpGet]
         [WithRedirectUri]
-        public async Task<IActionResult> Register(bool restore = false)
+        public async Task<IActionResult> Register(bool restore = false, string? name = null)
         {
             RegistrationSession? session = null;
             if (TryGetRegistrationSessionId(out string sessionId))
@@ -69,9 +70,11 @@ namespace RealmeyeIdentity.Controllers
             }
             RegisterModel model = new()
             {
+                Name = name,
                 Code = session.Code,
                 Restore = restore,
             };
+            ModelUtils.SetCodeExpiration(model, session);
             return View(model);
         }
 
@@ -82,14 +85,28 @@ namespace RealmeyeIdentity.Controllers
             [FromQuery] string redirectUri,
             [FromQuery] bool restore)
         {
-            if (!ModelState.IsValid)
+            RegistrationSession? session = null;
+            if (TryGetRegistrationSessionId(out string sessionId))
             {
-                return View(model);
+                session = await _service.GetRegistrationSession(sessionId);
             }
 
-            if (!TryGetRegistrationSessionId(out string sessionId))
+            if (session == null)
             {
-                model.SessionExpired = true;
+                return RedirectToAction(nameof(Register), new
+                {
+                    redirectUri,
+                    name = model.Name,
+                });
+            }
+
+            bool passwordValid = ModelUtils.ValidateRegisterPassword(model);
+            if (!ModelState.IsValid
+                || !passwordValid
+                || model.Name == null
+                || model.Password == null)
+            {
+                ModelUtils.SetCodeExpiration(model, session);
                 return View(model);
             }
 
@@ -102,11 +119,21 @@ namespace RealmeyeIdentity.Controllers
             switch (result)
             {
                 case RegisterResult.Ok ok:
+                    RemoveRegistrationSessionId();
                     string uri = QueryHelpers.AddQueryString(redirectUri, IdTokenQueryParam, ok.IdToken);
                     return Redirect(uri);
 
                 case RegisterResult.Error error:
+                    if (error.Type == RegisterErrorType.SessionExpired)
+                    {
+                        return RedirectToAction(nameof(Register), new
+                        {
+                            redirectUri,
+                            name = model.Name,
+                        });
+                    }
                     ModelUtils.AddRegisterError(ModelState, model, error);
+                    ModelUtils.SetCodeExpiration(model, session);
                     return View(model);
 
                 default:
@@ -140,7 +167,11 @@ namespace RealmeyeIdentity.Controllers
             switch (result)
             {
                 case ChangePasswordResult.Ok ok:
-                    return RedirectToAction(nameof(Login));
+                    return RedirectToAction(nameof(Login), new
+                    {
+                        redirectUri,
+                        name = model.Name,
+                    });
 
                 case ChangePasswordResult.Error error:
                     ModelUtils.AddChangePasswordError(ModelState, error);
@@ -154,7 +185,7 @@ namespace RealmeyeIdentity.Controllers
         private bool TryGetRegistrationSessionId(out string sessionId)
         {
             sessionId = "";
-            if (!Request.Cookies.TryGetValue(SessionCookieName, out string? cookieSessionId)
+            if (!Request.Cookies.TryGetValue(RegistrationCookieName, out string? cookieSessionId)
                 || cookieSessionId == null)
             {
                 return false;
@@ -165,12 +196,17 @@ namespace RealmeyeIdentity.Controllers
 
         private void SetRegistrationSessionId(RegistrationSession session)
         {
-            Response.Cookies.Append(SessionCookieName, session.Id, new()
+            Response.Cookies.Append(RegistrationCookieName, session.Id, new()
             {
                 HttpOnly = true,
                 IsEssential = true,
                 Expires = session.ExpiresAt,
             });
+        }
+
+        private void RemoveRegistrationSessionId()
+        {
+            Response.Cookies.Delete(RegistrationCookieName);
         }
     }
 }

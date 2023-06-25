@@ -3,8 +3,14 @@ html {
     font-size: 28px;
 }
 
+@media (max-width: 576px) {
+    html {
+        font-size: 18px;
+    }
+}
+
 body {
-    background: #00000010;
+    background: #ededed;
     margin: 10px;
 }
 
@@ -13,12 +19,16 @@ input {
     font-size: 1em;
     border: 0;
     border-radius: 10px;
-    background: #00000010;
+    background: #ededed;
     padding: 12px 14px;
 }
 
     input:focus {
         outline: none;
+    }
+
+    input::placeholder {
+        font-size: 0.8em;
     }
 
 .btn {
@@ -49,13 +59,26 @@ input {
 
         .btn.secondary:hover {
             cursor: pointer;
-            background: #00000010;
+            background: #ededed;
         }
 
         .btn.secondary:active {
             cursor: pointer;
-            background: #0000001f;
+            background: #dddddd;
         }
+
+a {
+    font-size: 1em;
+    color: #459eda;
+}
+
+    a:hover {
+        color: #2b91d5;
+    }
+
+    a:active {
+        color: #007acc;
+    }
 
 a.btn {
     text-align: center;
@@ -65,7 +88,7 @@ a.btn {
 .main-container {
     max-width: 700px;
     margin: 0 auto;
-    border: 1px solid #0000003f;
+    border: 1px solid #bfbfbf;
     border-radius: 10px;
     background: #ffffff;
     padding: 32px 14px 72px 14px;
@@ -91,20 +114,38 @@ a.btn {
     display: flex;
     flex-direction: column;
     position: relative;
-    margin: 1.28em 0 0 0;
+    margin: 2.6em 0 0 0;
 }
 
-    .form-field > label {
-        font-size: 0.6em;
-        color: #000000a0;
+    .form-field > label,
+    .form-field > span {
+        font-size: 0.8em;
         position: absolute;
         left: 14px;
+    }
+
+    .form-field > label {
+        color: #858585;
         top: -1.2em;
+    }
+
+    .form-field > span {
+        color: #f44336;
+        bottom: -1.2em;
+    }
+
+    .form-field > span.static {
+        position: static;
+        margin: 2px 0 0 14px;
     }
 
 .form-buttons {
     display: flex;
     flex-direction: column;
-    gap: 20px 0;
+    gap: 0.7em 0;
     margin: 2.6em 0 0 0;
 }
+
+    .form-buttons a:not(.btn) {
+        font-size: 0.8em;
+    }

@@ -10,6 +10,8 @@ namespace RealmeyeIdentity.Authentication
 {
     public class AuthenticationService : IAuthenticationService
     {
+        private const string RegistrationSessionsId = "RegistrationSession";
+
         private readonly IMongoCollection<User> _userCollection;
 
         private readonly IPasswordService _passwordService;
@@ -69,7 +71,7 @@ namespace RealmeyeIdentity.Authentication
 
         public async Task<RegistrationSession?> GetRegistrationSession(string sessionId)
         {
-            byte[] serializedSession = await _cache.GetAsync(sessionId);
+            byte[] serializedSession = await _cache.GetAsync(RegistrationSessionId(sessionId));
             if (serializedSession == null)
             {
                 return null;
@@ -87,10 +89,13 @@ namespace RealmeyeIdentity.Authentication
                 .AddMinutes(_registrationSessionOptions.LifetimeMinutes).AddSeconds(1);
             RegistrationSession session = new(sessionId, code, expiresAt);
             byte[] serializedSession = session.Serialize();
-            await _cache.SetAsync(sessionId, serializedSession, new DistributedCacheEntryOptions
-            {
-                AbsoluteExpiration = expiresAt,
-            });
+            await _cache.SetAsync(
+                RegistrationSessionId(sessionId),
+                serializedSession,
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpiration = expiresAt,
+                });
             return session;
         }
 
@@ -191,6 +196,11 @@ namespace RealmeyeIdentity.Authentication
             JwtSecurityToken jwt = handler.CreateJwtSecurityToken(descriptor);
             string serializedJwt = handler.WriteToken(jwt);
             return serializedJwt;
+        }
+
+        private static string RegistrationSessionId(string sessionId)
+        {
+            return $"{RegistrationSessionsId}_{sessionId}";
         }
     }
 }

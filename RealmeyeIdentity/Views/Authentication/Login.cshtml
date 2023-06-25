@@ -6,21 +6,24 @@
 
 <form asp-action="Login" asp-route-redirectUri="@ViewData["RedirectUri"]" class="main-form">
     <div class="form-field">
-        <input asp-for="Name" type="text" placeholder="In-game name" />
+        <label>RotMG name</label>
+        <input asp-for="Name" type="text" />
         <span asp-validation-for="Name"></span>
     </div>
     <div class="form-field">
-        <input asp-for="Password" type="password" placeholder="Password" />
+        <label>Password</label>
+        <input asp-for="Password" type="password" placeholder="Not from RotMG or RealmEye" />
         <span asp-validation-for="Password"></span>
     </div>
     <div class="form-buttons">
         <button type="submit" class="btn">Login</button>
-        <a asp-action="Register"
-            asp-route-redirectUri="@ViewData["RedirectUri"]">Register</a>
-        <a asp-action="Register"
-           asp-route-redirectUri="@ViewData["RedirectUri"]"
-           asp-route-restore="true">Restore password</a>
-        <a asp-action="ChangePassword"
-           asp-route-redirectUri="@ViewData["RedirectUri"]">Change password</a>
+        <div class="links">
+            <a asp-action="Register"
+               asp-route-redirectUri="@ViewData["RedirectUri"]"
+               asp-route-restore="true">Forgot password</a>
+
+            <a asp-action="Register"
+               asp-route-redirectUri="@ViewData["RedirectUri"]">Register</a>
+        </div>
     </div>
 </form>
