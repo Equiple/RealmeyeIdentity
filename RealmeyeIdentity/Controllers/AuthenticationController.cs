@@ -174,12 +174,8 @@ namespace RealmeyeIdentity.Controllers
 
             switch (result)
             {
-                case ChangePasswordResult.Ok ok:
-                    return RedirectToAction(nameof(Login), new
-                    {
-                        redirectUri,
-                        name = model.Name,
-                    });
+                case ChangePasswordResult.Ok:
+                    return Redirect(redirectUri);
 
                 case ChangePasswordResult.Error error:
                     ModelUtils.AddChangePasswordError(ModelState, error);
