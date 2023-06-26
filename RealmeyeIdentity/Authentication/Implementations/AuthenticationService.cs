@@ -11,6 +11,7 @@ namespace RealmeyeIdentity.Authentication
     public class AuthenticationService : IAuthenticationService
     {
         private const string RegistrationSessionsId = "RegistrationSession";
+        private const string TokenSessionsId = "TokenSession";
 
         private readonly IMongoCollection<User> _userCollection;
 
@@ -18,8 +19,7 @@ namespace RealmeyeIdentity.Authentication
         private readonly ICodeGenerator _codeGenerator;
         private readonly IRealmeyeService _realmeyeService;
 
-        private readonly RegistrationSessionOptions _registrationSessionOptions;
-        private readonly IdTokenOptions _idTokenOptions;
+        private readonly AuthenticationOptions _options;
 
         private readonly IDistributedCache _cache;
 
@@ -28,8 +28,7 @@ namespace RealmeyeIdentity.Authentication
             ICodeGenerator codeGenerator,
             IRealmeyeService realmeyeService,
             IOptions<UserDatabaseOptions> dbOptions,
-            IOptions<RegistrationSessionOptions> registrationSessionOptions,
-            IOptions<IdTokenOptions> idTokenOptions,
+            IOptions<AuthenticationOptions> options,
             IDistributedCache cache)
         {
             MongoClient client = new(dbOptions.Value.ConnectionString);
@@ -40,8 +39,7 @@ namespace RealmeyeIdentity.Authentication
             _codeGenerator = codeGenerator;
             _realmeyeService = realmeyeService;
 
-            _registrationSessionOptions = registrationSessionOptions.Value;
-            _idTokenOptions = idTokenOptions.Value;
+            _options = options.Value;
 
             _cache = cache;
         }
@@ -65,8 +63,8 @@ namespace RealmeyeIdentity.Authentication
                 return LoginErrorType.IncorrectPassword;
             }
 
-            string idToken = GetIdToken(user);
-            return idToken;
+            string authCode = await CreateAuthCode(user.Id);
+            return authCode;
         }
 
         public async Task<RegistrationSession?> GetRegistrationSession(string sessionId)
@@ -83,10 +81,10 @@ namespace RealmeyeIdentity.Authentication
         public async Task<RegistrationSession> StartRegistration()
         {
             string sessionId = Convert.ToBase64String(
-                RandomNumberGenerator.GetBytes(_registrationSessionOptions.IdLengthBytes));
+                RandomNumberGenerator.GetBytes(_options.RegistrationSessionIdLengthBytes));
             string code = _codeGenerator.GenerateCode();
             DateTimeOffset expiresAt = DateTimeOffset.UtcNow
-                .AddMinutes(_registrationSessionOptions.LifetimeMinutes).AddSeconds(1);
+                .AddMinutes(_options.RegistrationSessionLifetimeMinutes).AddSeconds(1);
             RegistrationSession session = new(sessionId, code, expiresAt);
             byte[] serializedSession = session.Serialize();
             await _cache.SetAsync(
@@ -131,10 +129,12 @@ namespace RealmeyeIdentity.Authentication
                 return RegisterErrorType.IncorrectCode;
             }
 
-            if (user == null) // restore == false
+            await _cache.RemoveAsync(RegistrationSessionId(sessionId));
+
+            byte[] salt = _passwordService.GenerateSalt();
+            byte[] hash = _passwordService.GetHash(Encoding.UTF8.GetBytes(password), salt);
+            if (user == null)
             {
-                byte[] salt = _passwordService.GenerateSalt();
-                byte[] hash = _passwordService.GetHash(Encoding.UTF8.GetBytes(password), salt);
                 user = new()
                 {
                     Name = name,
@@ -143,9 +143,15 @@ namespace RealmeyeIdentity.Authentication
                 };
                 await _userCollection.InsertOneAsync(user);
             }
+            else
+            {
+                user.Password = Convert.ToBase64String(hash);
+                user.Salt = Convert.ToBase64String(salt);
+                await _userCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
+            }
 
-            string idToken = GetIdToken(user);
-            return idToken;
+            string authCode = await CreateAuthCode(user.Id);
+            return authCode;
         }
 
         public async Task<ChangePasswordResult> ChangePassword(
@@ -179,18 +185,39 @@ namespace RealmeyeIdentity.Authentication
             return new ChangePasswordResult.Ok();
         }
 
-        private string GetIdToken(User user)
+        public async Task<string?> CreateIdTokenAsync(string authCode)
         {
+            string sessionId = TokenSessionId(authCode);
+            string userId = await _cache.GetStringAsync(sessionId);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return null;
+            }
+
+            User? user = await _userCollection.Find(user => user.Id == userId)
+                .FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                return null;
+            }
+
+            await _cache.RemoveAsync(sessionId);
+
             SecurityTokenDescriptor descriptor = new()
             {
-                Issuer = _idTokenOptions.Issuer,
+                Issuer = _options.IdTokenIssuer,
                 IssuedAt = DateTime.UtcNow,
-                Expires = DateTime.UtcNow.AddMinutes(_idTokenOptions.LifetimeMinutes),
+                Expires = DateTime.UtcNow.AddMinutes(_options.IdTokenLifetimeMinutes),
                 Claims = new Dictionary<string, object>
                 {
                     { "uid", user.Id },
                     { "unm", user.Name },
-                }
+                },
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(Convert.FromBase64String(_options.IdTokenSecretKey)),
+                    SecurityAlgorithms.HmacSha256)
             };
             JwtSecurityTokenHandler handler = new();
             JwtSecurityToken jwt = handler.CreateJwtSecurityToken(descriptor);
@@ -198,9 +225,29 @@ namespace RealmeyeIdentity.Authentication
             return serializedJwt;
         }
 
+        private async Task<string> CreateAuthCode(string userId)
+        {
+            string authCode = Convert.ToBase64String(
+                RandomNumberGenerator.GetBytes(_options.AuthCodeLengthBytes));
+            await _cache.SetStringAsync(
+                TokenSessionId(authCode),
+                userId,
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpiration = DateTimeOffset.UtcNow
+                        .AddMinutes(_options.AuthCodeLifetimeMinutes),
+                });
+            return authCode;
+        }
+
         private static string RegistrationSessionId(string sessionId)
         {
             return $"{RegistrationSessionsId}_{sessionId}";
+        }
+
+        private static string TokenSessionId(string authCode)
+        {
+            return $"{TokenSessionsId}_{authCode}";
         }
     }
 }

@@ -11,5 +11,7 @@
         Task<RegisterResult> Register(string sessionId, string name, string password, bool restore);
 
         Task<ChangePasswordResult> ChangePassword(string name, string oldPassword, string newPassword);
+
+        Task<string?> CreateIdTokenAsync(string authCode);
     }
 }

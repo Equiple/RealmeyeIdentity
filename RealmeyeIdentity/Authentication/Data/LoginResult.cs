@@ -2,13 +2,13 @@
 {
     public abstract record class LoginResult
     {
-        public record class Ok(string IdToken) : LoginResult;
+        public record class Ok(string AuthCode) : LoginResult;
 
         public record class Error(LoginErrorType Type) : LoginResult;
 
-        public static implicit operator LoginResult(string idToken)
+        public static implicit operator LoginResult(string authCode)
         {
-            return new Ok(idToken);
+            return new Ok(authCode);
         }
 
         public static implicit operator LoginResult(LoginErrorType errorType)

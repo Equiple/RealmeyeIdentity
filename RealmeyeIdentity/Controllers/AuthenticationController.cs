@@ -8,7 +8,7 @@ namespace RealmeyeIdentity.Controllers
 {
     public class AuthenticationController : Controller
     {
-        private const string IdTokenQueryParam = "idToken";
+        private const string AuthCodeQueryParam = "authCode";
         private const string RegistrationCookieName = "registration_session";
 
         private readonly IAuthenticationService _service;
@@ -32,7 +32,9 @@ namespace RealmeyeIdentity.Controllers
             [FromForm] LoginModel model,
             [FromQuery] string redirectUri)
         {
-            if (!ModelState.IsValid || model.Name == null || model.Password == null)
+            if (!ModelState.IsValid
+                || model.Name == null
+                || model.Password == null)
             {
                 return View(model);
             }
@@ -42,7 +44,10 @@ namespace RealmeyeIdentity.Controllers
             switch (result)
             {
                 case LoginResult.Ok ok:
-                    string uri = QueryHelpers.AddQueryString(redirectUri, IdTokenQueryParam, ok.IdToken);
+                    string uri = QueryHelpers.AddQueryString(
+                        redirectUri,
+                        AuthCodeQueryParam,
+                        ok.AuthCode);
                     return Redirect(uri);
 
                 case LoginResult.Error error:
@@ -120,7 +125,10 @@ namespace RealmeyeIdentity.Controllers
             {
                 case RegisterResult.Ok ok:
                     RemoveRegistrationSessionId();
-                    string uri = QueryHelpers.AddQueryString(redirectUri, IdTokenQueryParam, ok.IdToken);
+                    string uri = QueryHelpers.AddQueryString(
+                        redirectUri,
+                        AuthCodeQueryParam,
+                        ok.AuthCode);
                     return Redirect(uri);
 
                 case RegisterResult.Error error:
@@ -180,6 +188,17 @@ namespace RealmeyeIdentity.Controllers
                 default:
                     throw new NotSupportedException();
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetToken(string authCode)
+        {
+            string? idToken = await _service.CreateIdTokenAsync(authCode);
+            if (idToken == null)
+            {
+                return Unauthorized();
+            }
+            return Ok(new TokenResponse { IdToken = idToken });
         }
 
         private bool TryGetRegistrationSessionId(out string sessionId)

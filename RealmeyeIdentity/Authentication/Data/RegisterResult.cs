@@ -2,13 +2,13 @@
 {
     public abstract record class RegisterResult
     {
-        public record class Ok(string IdToken) : RegisterResult;
+        public record class Ok(string AuthCode) : RegisterResult;
 
         public record class Error(RegisterErrorType Type) : RegisterResult;
 
-        public static implicit operator RegisterResult(string idToken)
+        public static implicit operator RegisterResult(string authCode)
         {
-            return new Ok(idToken);
+            return new Ok(authCode);
         }
 
         public static implicit operator RegisterResult(RegisterErrorType errorType)
