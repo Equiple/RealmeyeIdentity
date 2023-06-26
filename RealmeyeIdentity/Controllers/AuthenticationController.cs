@@ -190,10 +190,10 @@ namespace RealmeyeIdentity.Controllers
             }
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetToken(string authCode)
+        [HttpPost]
+        public async Task<IActionResult> GetToken([FromBody] TokenRequest request)
         {
-            string? idToken = await _service.CreateIdTokenAsync(authCode);
+            string? idToken = await _service.CreateIdTokenAsync(request.AuthCode);
             if (idToken == null)
             {
                 return Unauthorized();
