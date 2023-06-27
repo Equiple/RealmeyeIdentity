@@ -26,11 +26,6 @@ UserBsonMap.Register();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors(builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-}
-
 // Configure the HTTP request pipeline.
 //if (!app.Environment.IsDevelopment())
 //{
@@ -40,7 +35,20 @@ if (app.Environment.IsDevelopment())
 //}
 
 //app.UseHttpsRedirection();
+
 app.UseStaticFiles();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors(builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+}
+else
+{
+    app.UseCors(builder => builder
+        .WithOrigins("https://equiple.net")
+        .AllowAnyMethod()
+        .AllowAnyHeader());
+}
 
 app.UseRouting();
 
