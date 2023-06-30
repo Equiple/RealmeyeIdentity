@@ -70,10 +70,30 @@
 @section Scripts
 {
     <script type="text/javascript">
+        const timer = document.getElementById('code-timer');
+        let timerId = undefined;
+
         function setTime(timer, seconds) {
             const secs = seconds % 60;
             const mins = (seconds - secs) / 60;
             timer.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function startTimer(seconds) {
+            setTime(timer, seconds);
+            if (timerId !== undefined) {
+                clearInterval(timerId);
+            }
+            timerId = setInterval(() => {
+                if (seconds === 0) {
+                    clearInterval(timerId);
+                    timerId = undefined;
+                    startRegistrationOver();
+                    return;
+                }
+                seconds--;
+                setTime(timer, seconds);
+            }, 1000);
         }
 
         function startRegistrationOver() {
@@ -81,17 +101,28 @@
             location.assign(`@startRegisterUri&name=${nameInput.value}`);
         }
 
-        const timer = document.getElementById('code-timer');
-        let seconds = @Model.CodeExpiresInSeconds;
-        setTime(timer, seconds);
-        const timerInterval = setInterval(() => {
-            if (seconds === 0) {
-                clearInterval(timerInterval);
-                startRegistrationOver();
-                return;
+        startTimer(@Model.CodeExpiresInSeconds);
+
+        document.addEventListener('visibilitychange', async _ => {
+            if (document.visibilityState === 'visible') {
+                const sessionResponse = await fetch('/getRegistrationSession');
+                if (!sessionResponse.ok) {
+                    startRegistrationOver();
+                    return;
+                }
+                let sessionJson;
+                try {
+                    sessionJson = await sessionResponse.json();
+                } catch {
+                    startRegistrationOver();
+                    return;
+                }
+                if (typeof sessionJson.expiresInSeconds !== 'number') {
+                    startRegistrationOver();
+                    return;
+                }
+                startTimer(sessionJson.expiresInSeconds);
             }
-            seconds--;
-            setTime(timer, seconds);
-        }, 1000);
+        });
     </script>
 }

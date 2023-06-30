@@ -63,23 +63,19 @@ namespace RealmeyeIdentity.Controllers
         [WithRedirectUri]
         public async Task<IActionResult> Register(bool restore = false, string? name = null)
         {
-            RegistrationSession? session = null;
-            if (TryGetRegistrationSessionId(out string sessionId))
-            {
-                session = await _service.GetRegistrationSession(sessionId);
-            }
+            RegistrationSession? session = await GetRegSession();
             if (session == null)
             {
                 session = await _service.StartRegistration();
-                SetRegistrationSessionId(session);
+                SetRegSessionId(session);
             }
             RegisterModel model = new()
             {
                 Name = name,
                 Code = session.Code,
                 Restore = restore,
+                CodeExpiresInSeconds = session.GetExpiresInSeconds(),
             };
-            ModelUtils.SetCodeExpiration(model, session);
             return View(model);
         }
 
@@ -90,11 +86,7 @@ namespace RealmeyeIdentity.Controllers
             [FromQuery] string redirectUri,
             [FromQuery] bool restore)
         {
-            RegistrationSession? session = null;
-            if (TryGetRegistrationSessionId(out string sessionId))
-            {
-                session = await _service.GetRegistrationSession(sessionId);
-            }
+            RegistrationSession? session = await GetRegSession();
 
             if (session == null)
             {
@@ -111,12 +103,12 @@ namespace RealmeyeIdentity.Controllers
                 || model.Name == null
                 || model.Password == null)
             {
-                ModelUtils.SetCodeExpiration(model, session);
+                model.CodeExpiresInSeconds = session.GetExpiresInSeconds();
                 return View(model);
             }
 
             RegisterResult result = await _service.Register(
-                sessionId,
+                session.Id,
                 model.Name,
                 model.Password,
                 restore);
@@ -124,7 +116,7 @@ namespace RealmeyeIdentity.Controllers
             switch (result)
             {
                 case RegisterResult.Ok ok:
-                    RemoveRegistrationSessionId();
+                    RemoveRegSessionId();
                     string uri = QueryHelpers.AddQueryString(
                         redirectUri,
                         AuthCodeQueryParam,
@@ -141,7 +133,7 @@ namespace RealmeyeIdentity.Controllers
                         });
                     }
                     ModelUtils.AddRegisterError(ModelState, model, error);
-                    ModelUtils.SetCodeExpiration(model, session);
+                    model.CodeExpiresInSeconds = session.GetExpiresInSeconds();
                     return View(model);
 
                 default:
@@ -186,6 +178,20 @@ namespace RealmeyeIdentity.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetRegistrationSession()
+        {
+            RegistrationSession? session = await GetRegSession();
+            if (session == null)
+            {
+                return NotFound();
+            }
+            return Ok(new RegistrationSessionResponse
+            {
+                ExpiresInSeconds = session.GetExpiresInSeconds(),
+            });
+        }
+
         [HttpPost]
         public async Task<IActionResult> GetToken([FromBody] TokenRequest request)
         {
@@ -197,19 +203,17 @@ namespace RealmeyeIdentity.Controllers
             return Ok(new TokenResponse { IdToken = idToken });
         }
 
-        private bool TryGetRegistrationSessionId(out string sessionId)
+        private Task<RegistrationSession?> GetRegSession()
         {
-            sessionId = "";
-            if (!Request.Cookies.TryGetValue(RegistrationCookieName, out string? cookieSessionId)
-                || cookieSessionId == null)
+            if (!Request.Cookies.TryGetValue(RegistrationCookieName, out string? sessionId)
+                || sessionId == null)
             {
-                return false;
+                return Task.FromResult<RegistrationSession?>(null);
             }
-            sessionId = cookieSessionId;
-            return true;
+            return _service.GetRegistrationSession(sessionId);
         }
 
-        private void SetRegistrationSessionId(RegistrationSession session)
+        private void SetRegSessionId(RegistrationSession session)
         {
             Response.Cookies.Append(RegistrationCookieName, session.Id, new()
             {
@@ -219,7 +223,7 @@ namespace RealmeyeIdentity.Controllers
             });
         }
 
-        private void RemoveRegistrationSessionId()
+        private void RemoveRegSessionId()
         {
             Response.Cookies.Delete(RegistrationCookieName);
         }

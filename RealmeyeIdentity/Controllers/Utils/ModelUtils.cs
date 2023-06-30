@@ -40,9 +40,9 @@ namespace RealmeyeIdentity.Controllers
             return model.PasswordErrors.Count == 0;
         }
 
-        public static void SetCodeExpiration(RegisterModel model, RegistrationSession session)
+        public static int GetExpiresInSeconds(this RegistrationSession session)
         {
-            model.CodeExpiresInSeconds = (int)session.ExpiresAt
+            return (int)session.ExpiresAt
                 .Subtract(DateTimeOffset.UtcNow)
                 .TotalSeconds;
         }
