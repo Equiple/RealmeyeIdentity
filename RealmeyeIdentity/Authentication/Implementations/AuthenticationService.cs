@@ -46,8 +46,7 @@ namespace RealmeyeIdentity.Authentication
 
         public async Task<LoginResult> Login(string name, string password)
         {
-            User? user = await _userCollection.Find(user => user.Name == name)
-                .FirstOrDefaultAsync();
+            User? user = await GetUserByName(name);
 
             if (user == null)
             {
@@ -110,8 +109,7 @@ namespace RealmeyeIdentity.Authentication
                 return RegisterErrorType.SessionExpired;
             }
 
-            User? user = await _userCollection.Find(user => user.Name == name)
-                .FirstOrDefaultAsync();
+            User? user = await GetUserByName(name);
 
             if (restore && user == null)
             {
@@ -123,10 +121,18 @@ namespace RealmeyeIdentity.Authentication
                 return RegisterErrorType.AlreadyExists;
             }
 
-            bool codeValid = await _realmeyeService.ValidateCode(name, session.Code);
-            if (!codeValid)
+            ValidateNameResult validateRes = await _realmeyeService.ValidateCode(name, session.Code);
+            switch (validateRes)
             {
-                return RegisterErrorType.IncorrectCode;
+                case ValidateNameResult.Ok ok:
+                    name = ok.ExactName;
+                    break;
+
+                case ValidateNameResult.Error:
+                    return RegisterErrorType.IncorrectCode;
+
+                default:
+                    throw new NotSupportedException();
             }
 
             await _cache.RemoveAsync(RegistrationSessionId(sessionId));
@@ -145,6 +151,7 @@ namespace RealmeyeIdentity.Authentication
             }
             else
             {
+                user.Name = name;
                 user.Password = Convert.ToBase64String(hash);
                 user.Salt = Convert.ToBase64String(salt);
                 await _userCollection.ReplaceOneAsync(u => u.Id == user.Id, user);
@@ -159,8 +166,7 @@ namespace RealmeyeIdentity.Authentication
             string oldPassword,
             string newPassword)
         {
-            User? user = await _userCollection.Find(user => user.Name == name)
-                .FirstOrDefaultAsync();
+            User? user = await GetUserByName(name);
 
             if (user == null)
             {
@@ -238,6 +244,13 @@ namespace RealmeyeIdentity.Authentication
                         .AddMinutes(_options.AuthCodeLifetimeMinutes),
                 });
             return authCode;
+        }
+
+        private Task<User?> GetUserByName(string name)
+        {
+            name = name.ToLower();
+            return _userCollection.Find(user => user.Name.ToLower() == name)
+                .FirstOrDefaultAsync();
         }
 
         private static string RegistrationSessionId(string sessionId)

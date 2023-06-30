@@ -7,26 +7,47 @@ namespace RealmeyeIdentity.Authentication
     {
         private readonly static ProductInfoHeaderValue UserAgent = new("Chrome", "114.0.0.0");
 
-        public async Task<bool> ValidateCode(string name, string code)
+        public async Task<ValidateNameResult> ValidateCode(string name, string code)
         {
             string playerUri = GetPlayerUri(name);
             const int maxSeconds = 10;
-            bool hasCode = await LookInDocument(playerUri, playerDoc =>
+            string? foundName = await LookInDocument(playerUri, playerDoc =>
             {
-                string descLinesXPath = $"//div[{GetContainsClassesXPath("description-line")}]";
-                HtmlNodeCollection descLineNodes = playerDoc.DocumentNode.SelectNodes(descLinesXPath);
+                HtmlNodeCollection descLineNodes = playerDoc.DocumentNode.SelectNodes(
+                    $"//div[{GetContainsClassesXPath("description-line")}]");
 
                 if (descLineNodes == null)
                 {
-                    return false;
+                    return null;
                 }
 
-                return descLineNodes.Any(node => node.InnerText.Contains(code));
-            }, true, maxSeconds);
-            return hasCode;
+                bool hasCode = descLineNodes.Any(node => node.InnerText.Contains(code));
+
+                if (!hasCode)
+                {
+                    return null;
+                }
+
+                HtmlNode nameNode = playerDoc.DocumentNode.SelectSingleNode(
+                    $"//h1/span[{GetContainsClassesXPath("entity-name")}]");
+
+                if (nameNode == null)
+                {
+                    return null;
+                }
+
+                return nameNode.InnerText;
+            }, foundName => foundName != null, maxSeconds);
+
+            if (foundName == null)
+            {
+                return new ValidateNameResult.Error();
+            }
+
+            return foundName;
         }
 
-        public Task<bool> ValidateNameChange(string oldName, string newName)
+        public Task<ValidateNameResult> ValidateNameChange(string oldName, string newName)
         {
             throw new NotImplementedException();
         }
@@ -34,25 +55,28 @@ namespace RealmeyeIdentity.Authentication
         private static async Task<T?> LookInDocument<T>(
             string uri,
             Func<HtmlDocument, T> lookFunc,
-            T stopResult,
+            Func<T, bool> stopCondition,
             int maxSeconds)
         {
             CancellationTokenSource lookCancellation = new();
             Task lookTask = Task.Delay(TimeSpan.FromSeconds(maxSeconds), lookCancellation.Token);
 
             T? result = default;
-            bool documentSuccess;
+            bool stop;
             do
             {
                 HtmlDocument? document = await GetDocument(uri);
-                documentSuccess = document != null;
                 if (document != null)
                 {
                     result = lookFunc.Invoke(document);
+                    stop = stopCondition.Invoke(result);
+                }
+                else
+                {
+                    stop = false;
                 }
             }
-            while ((!documentSuccess || !Equals(result, stopResult))
-                && !lookTask.IsCompleted);
+            while (!stop && !lookTask.IsCompleted);
 
             if (!lookTask.IsCompleted)
             {

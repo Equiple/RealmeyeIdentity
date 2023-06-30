@@ -51,7 +51,7 @@ namespace RealmeyeIdentity.Controllers
                     return Redirect(uri);
 
                 case LoginResult.Error error:
-                    ModelUtils.AddLoginError(ModelState, error);
+                    ModelUtils.AddLoginError(ModelState, model, error);
                     return View(model);
 
                 default:

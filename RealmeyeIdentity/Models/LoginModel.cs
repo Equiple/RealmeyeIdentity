@@ -9,5 +9,7 @@ namespace RealmeyeIdentity.Models
 
         [Required(ErrorMessage = "Password is required")]
         public string? Password { get; set; }
+
+        public bool NotFound { get; set; }
     }
 }

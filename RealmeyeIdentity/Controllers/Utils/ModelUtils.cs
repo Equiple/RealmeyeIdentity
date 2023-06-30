@@ -9,12 +9,13 @@ namespace RealmeyeIdentity.Controllers
     {
         public static void AddLoginError(
             ModelStateDictionary modelState,
+            LoginModel model,
             LoginResult.Error error)
         {
             switch (error.Type)
             {
                 case LoginErrorType.NotFound:
-                    modelState.AddModelError(nameof(LoginModel.Name), "Name is not found");
+                    model.NotFound = true;
                     break;
                 case LoginErrorType.IncorrectPassword:
                     modelState.AddModelError(nameof(LoginModel.Password), "Incorrect password");

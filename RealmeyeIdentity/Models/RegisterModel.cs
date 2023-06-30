@@ -10,6 +10,10 @@ namespace RealmeyeIdentity.Models
         [Required(ErrorMessage = "Password is required")]
         public string? Password { get; set; }
 
+        [Required(ErrorMessage = "Password confirmation is required")]
+        [Compare(nameof(Password), ErrorMessage = "Passwords don't match")]
+        public string? PasswordConfirmation { get; set; }
+
         public string Code { get; set; }
 
         public int CodeExpiresInSeconds { get; set; }

@@ -12,5 +12,9 @@ namespace RealmeyeIdentity.Models
 
         [Required]
         public string NewPassword { get; set; }
+
+        [Required(ErrorMessage = "Password confirmation is required")]
+        [Compare(nameof(NewPassword), ErrorMessage = "Passwords don't match")]
+        public string? PasswordConfirmation { get; set; }
     }
 }

@@ -2,8 +2,8 @@
 {
     public interface IRealmeyeService
     {
-        Task<bool> ValidateCode(string name, string code);
+        Task<ValidateNameResult> ValidateCode(string name, string code);
 
-        Task<bool> ValidateNameChange(string oldName, string newName);
+        Task<ValidateNameResult> ValidateNameChange(string oldName, string newName);
     }
 }

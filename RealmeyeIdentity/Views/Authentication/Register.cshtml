@@ -30,7 +30,8 @@
         <label>RotMG name</label>
         <input asp-for="Name" type="text" />
         <span asp-validation-for="Name"></span>
-        @if (Model.AlreadyExists) {
+        @if (Model.AlreadyExists)
+        {
             <span>Name is already taken, you can login <a asp-action="Login"
                 asp-route-redirectUri="@ViewData["RedirectUri"]">here</a></span>
         }
@@ -52,6 +53,11 @@
                 }
             </span>
         }
+    </div>
+    <div class="form-field">
+        <label>Confirm password</label>
+        <input asp-for="PasswordConfirmation" type="password" />
+        <span asp-validation-for="PasswordConfirmation"></span>
     </div>
     <div class="form-buttons">
         <button type="submit" class="btn">Register</button>

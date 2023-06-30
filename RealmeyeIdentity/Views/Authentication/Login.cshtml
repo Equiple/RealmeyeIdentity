@@ -9,6 +9,11 @@
         <label>RotMG name</label>
         <input asp-for="Name" type="text" />
         <span asp-validation-for="Name"></span>
+        @if (Model.NotFound)
+        {
+            <span>Name is not found, you can register <a asp-action="Register"
+                asp-route-redirectUri="@ViewData["RedirectUri"]">here</a></span>
+        }
     </div>
     <div class="form-field">
         <label>Password</label>
